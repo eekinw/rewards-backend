@@ -1,0 +1,65 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          Int         @id @default(autoincrement())
+  user_status USER_STATUS
+  email       String      @unique
+  points      Int
+  redemptions Int
+  created_at  DateTime    @default(now())
+  updated_at  DateTime    @updatedAt
+  Redemption  Redemption?
+}
+
+model Reward {
+  id             Int         @id @default(autoincrement())
+  category       Category    @relation(fields: [category_id], references: [id])
+  category_id    Int         @unique
+  category_title String
+  name           String
+  description    String
+  quantity       Int
+  is_redeemable  Boolean
+  created_at     DateTime    @default(now())
+  updated_at     DateTime    @updatedAt
+  Redemption     Redemption?
+}
+
+enum USER_STATUS {
+  active
+  inactive
+}
+
+model Category {
+  id         Int      @id @default(autoincrement())
+  title      String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  Reward     Reward?
+}
+
+model Redemption {
+  id                Int               @id @default(autoincrement())
+  user_id           Int               @unique
+  user              User              @relation(fields: [user_id], references: [id])
+  reward_id         Int               @unique
+  reward            Reward            @relation(fields: [reward_id], references: [id])
+  status            REDEMPTION_STATUS
+  redemption_date   DateTime          @default(now())
+  redemption_expiry DateTime
+}
+
+enum REDEMPTION_STATUS {
+  redeemed
+  unredeeemed
+}
