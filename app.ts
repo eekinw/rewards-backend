@@ -1,14 +1,14 @@
-import express from 'express'
-import { Prisma, PrismaClient } from "@prisma/client";
+const express = require('express');
+const { PrismaClient } = require('@prisma/client');
 
-const prisma = new PrismaClient();
+export const prisma = new PrismaClient();
 const app = express();
 
 
 app.use(express.json())
 
 
-app.get('/rewards', async (req, res) => {
+app.get('/', async (req, res) => {
   const rewards = await prisma.reward.findMany()
   res.json(rewards)
   console.log(rewards)
