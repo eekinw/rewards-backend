@@ -1,11 +1,6 @@
-
-
-
 import { USER_STATUS, REDEMPTION_STATUS, PrismaClient } from '@prisma/client';
-import { exit } from 'process';
 
-export const prisma = new PrismaClient();
-
+const prisma = new PrismaClient();
 
 async function seed() {
   try {
@@ -23,6 +18,12 @@ async function seed() {
           email: 'noah@supahands.com',
           points: 50,
           redemptions: 2,
+        },
+        {
+          user_status: USER_STATUS.active,
+          email: 'jonathan@supahands.com',
+          points: 0,
+          redemptions: 10
         },
       ],
     });

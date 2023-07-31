@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:13
+    ports:
+      - 5434:5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: abcd123
+      POSTGRES_DB: rewards_db
+    networks:
+      - local_app
+networks:
+  local_app:
