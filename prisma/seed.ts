@@ -1,4 +1,4 @@
-import { USER_STATUS, REDEMPTION_STATUS, PrismaClient } from '@prisma/client';
+import { USER_STATUS, PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -48,7 +48,8 @@ async function seed() {
           category_id: 1, 
           name: 'SUPA Shirt',
           description: 'White SUPA Shirt',
-          category_title:  "Clothing",
+          category_title: "Clothing",
+          points_required: 50,
           quantity: 30,
           is_redeemable: true,
         },
@@ -56,7 +57,8 @@ async function seed() {
           category_id: 2, 
           name: 'SUPA Mug',
           description: 'Just a mug',
-          category_title:  "Merchandise",
+          category_title: "Merchandise",
+          points_required: 30,
           quantity: 50,
           is_redeemable: true,
         },
@@ -70,13 +72,11 @@ async function seed() {
         {
           user_id: 1,
           reward_id: 1, 
-          status: REDEMPTION_STATUS.redeemed,
           redemption_expiry: new Date('2023-12-31'), // Example expiry date
         },
         {
           user_id: 2, 
           reward_id: 2, 
-          status: REDEMPTION_STATUS.unredeeemed,
           redemption_expiry: new Date('2023-12-15'), // Example expiry date
         },
         // Add more redemptions as needed
