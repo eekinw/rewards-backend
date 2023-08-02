@@ -85,7 +85,7 @@ app.post('/admin/rewards', async (req, res) => {
 
 // DELETING A REWARD
 
-app.delete('/admin/:id', async (req, res) => {
+app.delete('/admin/rewards/:id', async (req, res) => {
   try {
     const rewardId = parseInt(req.params.id);
     console.log('Deleting reward with ID:', rewardId)
@@ -134,12 +134,18 @@ app.get('/admin/rewards', async (req, res) => {
 // LISTING ALL REDEMPTIONS
 app.get('/admin/redemptions', async (req, res) => {
   try {
-  const redemptions = await prisma.redemption.findMany()
+    const redemptions = await prisma.redemption.findMany({
+      include: {
+        user: true
+      }
+    })
   res.status(200).json(redemptions)
   } catch (error: any) {
     console.error('Error fetching rewards:', error.message);
   }
 })
+
+
 
 // SEARCHING A REDEMPTION
 
@@ -222,10 +228,16 @@ app.get('/user/rewards/:id', async (req, res) => {
   }
 })
 
-// LISTING ALL REDEMPTIONSß
+// LISTING ALL REDEMPTIONS
 app.get('/user/redemptions', async (req, res) => {
   try {
-  const redemptions = await prisma.redemption.findMany()
+    const redemptions = await prisma.redemption.findMany(
+      {
+        include: {
+        user: true
+      }
+    }
+  )
   res.status(200).json(redemptions)
   } catch (error: any) {
     console.error('Error fetching rewards:', error.message);
