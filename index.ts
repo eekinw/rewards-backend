@@ -18,6 +18,13 @@ interface Rewards {
   description: string;
 }
 
+interface User {
+  id: number;
+  user_status: string;
+  email: string;
+}
+
+
 interface RedemptionData {
   user_id: number;
   reward_id: number;
@@ -53,7 +60,8 @@ app.get('/admin/rewards/:id', async (req, res) => {
   try {
     const rewardId = parseInt(req.params.id)
     const reward = await prisma.reward.findUnique({
-    where: { id: rewardId }
+      where: { id: rewardId },
+      include: { Redemption: { include: { user: true } } }
     })
   res.status(200).json(reward)
   } catch (error: any) {
@@ -145,6 +153,23 @@ app.get('/admin/redemptions', async (req, res) => {
   }
 })
 
+// LISTING A CERTAIN REDEMPTION ACCORDING TO REWARD ID
+app.get('/admin/rewards/:id/redemptions', async (req, res) => {
+  try {
+    // console.log('Request params:', req.params);
+    const rewardId = parseInt(req.params.id);
+    // console.log('Fetching redemptions for reward ID:', rewardId); 
+    const redemptions = await prisma.redemption.findMany({
+      where: { reward_id: rewardId }, 
+      include: { user: true },
+    });
+      console.log('Redemptions:', redemptions); 
+    res.status(200).json(redemptions);
+  } catch (error: any) {
+    console.error('Error fetching redemptions:', error.message);
+    res.status(500).json({ error: 'Failed to fetch redemptions' });
+  }
+});
 
 
 // SEARCHING A REDEMPTION
@@ -208,6 +233,7 @@ app.post('/user/rewards/:id/redeem', async (req, res) => {
     await prisma.redemption.create({
       data: redemptionData
     })
+    return res.status(200).json({ message: 'Redemption successful' });
 
   } catch (error: any) {
     console.error('Error fetching rewards:', error.message);

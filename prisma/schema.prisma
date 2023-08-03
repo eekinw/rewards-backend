@@ -53,9 +53,9 @@ model Category {
 
 model Redemption {
   id                Int      @id @default(autoincrement())
-  user_id           Int      @unique
+  user_id           Int
   user              User     @relation(fields: [user_id], references: [id])
-  reward_id         Int      @unique
+  reward_id         Int
   reward            Reward   @relation(fields: [reward_id], references: [id], onDelete: Cascade)
   redemption_date   DateTime @default(now())
   redemption_expiry DateTime
