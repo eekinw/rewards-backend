@@ -4,26 +4,31 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient();
 const app = express();
 
-
 app.use(express.json())
 
 interface Rewards {
   id: number,
   name: string;
   category_id: number;
-  category_title: string;
   points_required: number
   is_redeemable: boolean;
   quantity: number;
   description: string;
+  category: Category;
+}
+
+interface Category {
+  id: number;
+  title: string;
+
 }
 
 interface User {
   id: number;
   user_status: string;
   email: string;
+  points: number
 }
-
 
 interface RedemptionData {
   user_id: number;
@@ -32,23 +37,61 @@ interface RedemptionData {
   redemption_expiry: Date
 }
 
+interface CategoryMap {
+  [key: string]: number;
+};
+
+const categoryMap: CategoryMap = {
+  "Clothing": 1,
+  "Merchandise": 2,
+  "Food": 3
+};
+
+
 // **REWARDS ADMIN**
 
 
 // LISTING ALL USERS
 app.get('/admin/users', async (req, res) => {
   try {
-    const users = await prisma.user.findMany()
+    const users = await prisma.user.findMany({
+      include: { Redemption: true}
+    })
     res.status(200).json(users)
   } catch (error: any) {
     console.error('Error fetching rewards:', error.message);
   }
 })
 
+
+// LISTNG ALL REDEMPTIONS FOR A SPECIFIC USER
+app.get(`/admin/users/:userId/redemptions`, async (req, res) => {
+   const { userId } = req.params;
+
+  try {
+    const redemptions = await prisma.redemption.findMany({
+      where: {
+        user_id: parseInt(userId),
+      },
+    });
+
+    res.status(200).json(redemptions);
+  } catch (error) {
+    console.error('Error fetching redemptions:', error.message);
+    res.status(500).json({ error: 'Failed to fetch redemptions' });
+  }
+})
+
+
+
 // LISTING ALL REWARDS
 app.get('/admin/rewards', async (req, res) => {
   try {
-  const rewards = await prisma.reward.findMany()
+    const rewards = await prisma.reward.findMany(
+    {
+        include: { category: true }
+      }
+  )
   res.status(200).json(rewards)
   } catch (error: any) {
     console.error('Error fetching rewards:', error.message);
@@ -61,7 +104,10 @@ app.get('/admin/rewards/:id', async (req, res) => {
     const rewardId = parseInt(req.params.id)
     const reward = await prisma.reward.findUnique({
       where: { id: rewardId },
-      include: { Redemption: { include: { user: true } } }
+      include: {
+        Redemption: { include: { user: true } },
+        category: true
+      }
     })
   res.status(200).json(reward)
   } catch (error: any) {
@@ -73,23 +119,41 @@ app.get('/admin/rewards/:id', async (req, res) => {
 
 app.post('/admin/rewards', async (req, res) => {
   try {
-    const { name, category_id, category_title, points_required, description, quantity, is_redeemable } = req.body as Rewards
-    const rewards = await prisma.reward.create({
-      data: {
-        name: name,
-        category_id: category_id,
-        category_title: category_title,
-        points_required: points_required,
-        description: description,
-        quantity: quantity,
-        is_redeemable: is_redeemable
-      },
+    const { name, category_title, points_required, description, quantity, is_redeemable } = req.body;
+
+    if (!name || !category_title || !points_required || !description || !quantity || is_redeemable === undefined) {
+      return res.status(400).json({ error: "Missing required fields." });
+    }
+
+    const category_id = categoryMap[category_title];
+    if (!category_id) {
+      return res.status(400).json({ error: "Invalid category_title provided." });
+    }
+    
+    const rewardData = {
+      name: name,
+      points_required: points_required,
+      description: description,
+      quantity: quantity,
+      is_redeemable: is_redeemable,
+      category: {
+        connect: {
+          id: category_id
+        }
+      }
+    };
+
+    const reward = await prisma.reward.create({
+      data: rewardData
     });
-    res.json(rewards)
+
+    res.json(reward);
   } catch (error: any) {
-     console.error('Error fetching rewards:', error.message);
+    console.error('Error fetching rewards:', error.message);
+    res.status(500).send('Error creating reward.');
   }
-})
+});
+
 
 // DELETING A REWARD
 
@@ -98,30 +162,29 @@ app.delete('/admin/rewards/:id', async (req, res) => {
     const rewardId = parseInt(req.params.id);
     console.log('Deleting reward with ID:', rewardId)
     const deletedReward = await prisma.reward.delete({
-      where: { id: rewardId}
+      where: { id: rewardId }
     })
     res.json(deletedReward)
   } catch (error: any) {
     console.error('Error fetching rewards:', error.message);
+     res.status(500).send('An error occurred while deleting the reward.');
   }
 })
 
 // EDITING A REWARD
 
-app.put('/admin/:id', async (req, res) => {
+app.put('/admin/rewards/:id', async (req, res) => {
   try {
     const rewardId = parseInt(req.params.id);
-    const { category_id, category_title, points_required, name, description, quantity } = req.body
+    const { points_required, name, description, quantity } = req.body
 
     const updatedReward = await prisma.reward.update({
       where: { id: rewardId },
       data: {
-        category_id,
-        category_title,
-        points_required,
         name,
         description,
-        quantity
+        quantity,
+        points_required,
       }
     })
     res.json(updatedReward)
@@ -179,9 +242,13 @@ app.get('/admin/rewards/:id/redemptions', async (req, res) => {
 // **REWARDS AGENT**
 
 // LISTING ALL REWARDS
-app.get('/user/rewards', async (req, res) => {
+app.get('/agent/rewards', async (req, res) => {
   try {
-  const rewards = await prisma.reward.findMany()
+    const rewards = await prisma.reward.findMany(
+    {
+        include: { category: true }
+      }
+  )
   res.status(200).json(rewards)
   } catch (error: any) {
     console.error('Error fetching rewards:', error.message);
@@ -189,13 +256,14 @@ app.get('/user/rewards', async (req, res) => {
 })
 
 // REDEEMING A REWARD
-app.post('/user/rewards/:id/redeem', async (req, res) => {
-  try {
+app.post('/agent/rewards/:id/redeem', async (req, res) => {
+
     const rewardId = parseInt(req.params.id);
-    const userId = 1;
+    const userId = req.body.userId; 
    
-    const reward = await prisma.reward.findUnique({ where: { id: rewardId } });
     const user = await prisma.user.findUnique({ where: { id: userId } })
+    const reward = await prisma.reward.findUnique({ where: { id: rewardId } });
+
     
     if (!reward || !user) {
       return res.status(404).json({ error: 'Reward or user does not exist'})
@@ -215,26 +283,29 @@ app.post('/user/rewards/:id/redeem', async (req, res) => {
     const redemptionExpiry = new Date();
     redemptionExpiry.setDate(redemptionExpiry.getDate() + 60);
 
-    // redemption
-    await prisma.reward.update({
-      where: { id: rewardId },
-      data: { quantity: reward.quantity - 1}
-    })
-    
+    // deduct user's points
+    try {
+    // Transaction (Prisma)
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: userId },
+        data: { points: user.points - reward.points_required }
+      }),
+      prisma.reward.update({
+        where: { id: rewardId },
+        data: { quantity: reward.quantity - 1 }
+      }),
+      prisma.redemption.create({
+        data: {
+          user_id: userId,
+          reward_id: rewardId,
+          redemption_date: redemptionDate,
+          redemption_expiry: redemptionExpiry
+        }
+      })
+    ]);
 
-    const redemptionData: RedemptionData = {
-      user_id: userId,
-      reward_id: rewardId,
-      redemption_date: redemptionDate,
-      redemption_expiry: redemptionExpiry
-    };
-
-    //insert new redemption in the database
-    await prisma.redemption.create({
-      data: redemptionData
-    })
     return res.status(200).json({ message: 'Redemption successful' });
-
   } catch (error: any) {
     console.error('Error fetching rewards:', error.message);
     return res.status(500).json({ error: 'An error occurred during redemption.' });
@@ -242,7 +313,7 @@ app.post('/user/rewards/:id/redeem', async (req, res) => {
 })
 
 // LISTING A CERTAIN REWARD
-app.get('/user/rewards/:id', async (req, res) => {
+app.get('/agent/rewards/:id', async (req, res) => {
   try {
     const rewardId = parseInt(req.params.id)
     const reward = await prisma.reward.findUnique({
@@ -255,7 +326,7 @@ app.get('/user/rewards/:id', async (req, res) => {
 })
 
 // LISTING ALL REDEMPTIONS
-app.get('/user/redemptions', async (req, res) => {
+app.get('/agent/redemptions', async (req, res) => {
   try {
     const redemptions = await prisma.redemption.findMany(
       {
