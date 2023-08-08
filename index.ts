@@ -76,7 +76,7 @@ app.get(`/admin/users/:userId/redemptions`, async (req, res) => {
     });
 
     res.status(200).json(redemptions);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching redemptions:', error.message);
     res.status(500).json({ error: 'Failed to fetch redemptions' });
   }
