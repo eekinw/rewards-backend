@@ -171,6 +171,67 @@ app.delete('/admin/rewards/:id', async (req, res) => {
   }
 })
 
+// DELETING A REDEMPTION
+app.delete('/admin/redemptions/:id', async (req, res) => {
+  try {
+    const redemptionId = parseInt(req.params.id);
+    console.log('Deleting redemption with ID:', redemptionId);
+
+    // 1. Fetch the redemption data first before deleting it
+    const redemption = await prisma.redemption.findUnique({
+      where: { id: redemptionId },
+      include: {
+        reward: true, 
+        user: true   
+      }
+    });
+
+    // Check if redemption exists
+    if (!redemption) {
+      return res.status(404).send('Redemption not found.');
+    }
+
+    // 2. Increase the user's points by the points that the redemption represents
+    const userWithUpdatedPoints = await prisma.user.update({
+      where: { id: redemption.user.id },
+      data: {
+        points: {
+          increment: redemption.reward.points_required // Assuming your reward model has a field named `points_required`
+        }, 
+        redemptions: {
+          decrement: 1
+        }
+      }
+    });
+
+    // 3. Increase the reward's quantity
+    const rewardWithUpdatedQuantity = await prisma.reward.update({
+      where: { id: redemption.reward.id },
+      data: {
+        quantity: {
+          increment: 1
+        }
+      }
+    });
+
+    // 4. Delete the redemption
+    const deletedRedemption = await prisma.redemption.delete({
+      where: { id: redemptionId }
+    });
+
+    res.json({
+      deletedRedemption,
+      userWithUpdatedPoints,
+      rewardWithUpdatedQuantity
+    });
+
+  } catch (error: any) {
+    console.error('Error fetching redemptions:', error.message);
+    res.status(500).send('An error occurred while deleting the redemption.');
+  }
+});
+
+
 // EDITING A REWARD
 
 app.put('/admin/rewards/:id', async (req, res) => {
@@ -259,7 +320,7 @@ app.get('/agent/rewards', async (req, res) => {
 app.post('/agent/rewards/:id/redeem', async (req, res) => {
 
     const rewardId = parseInt(req.params.id);
-    const userId = req.body.userId; 
+    const userId = parseInt(req.body.userId)
    
     const user = await prisma.user.findUnique({ where: { id: userId } })
     const reward = await prisma.reward.findUnique({ where: { id: rewardId } });
