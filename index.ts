@@ -59,7 +59,8 @@ app.get('/admin/users', async (req, res) => {
     })
     res.status(200).json(users)
   } catch (error: any) {
-    console.error('Error fetching rewards:', error.message);
+    console.error('Error fetching users:', error.message);
+    res.status(500).json({ error: 'Failed to fetch users.' }); 
   }
 })
 
@@ -107,6 +108,7 @@ app.get('/admin/rewards/:id', async (req, res) => {
       include: {
         Redemption: { include: { user: true } },
         category: true
+    
       }
     })
   res.status(200).json(reward)
@@ -255,13 +257,13 @@ app.put('/admin/rewards/:id', async (req, res) => {
 })
 
 // SEARCHING A REWARD (by id listed as button "click here for more details")
-app.get('/admin/rewards', async (req, res) => {
-  try {
+// app.get('/admin/rewards', async (req, res) => {
+//   try {
 
-  } catch (error: any) {
-    console.error('Error fetching rewards:', error.message);
-  }
-})
+//   } catch (error: any) {
+//     console.error('Error fetching rewards:', error.message);
+//   }
+// })
 
 // LISTING ALL REDEMPTIONS
 app.get('/admin/redemptions', async (req, res) => {
@@ -350,7 +352,10 @@ app.post('/agent/rewards/:id/redeem', async (req, res) => {
     await prisma.$transaction([
       prisma.user.update({
         where: { id: userId },
-        data: { points: user.points - reward.points_required }
+        data: {
+          points: user.points - reward.points_required,
+          redemptions: user.redemptions + 1
+        }
       }),
       prisma.reward.update({
         where: { id: rewardId },
